@@ -282,10 +282,6 @@ data/
 *.xlsx
 *.xls
 
-# Docker
-.dockerignore
-docker-compose.override.yml
-docker-compose.local.yml
 
 # Kubernetes
 k8s-local/
