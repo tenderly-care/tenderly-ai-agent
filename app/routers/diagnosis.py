@@ -1,7 +1,14 @@
 """Diagnosis router with endpoints for AI diagnosis."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from app.models import DiagnosisRequest, DiagnosisResponse, ErrorResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.models import (
+    DiagnosisRequest, 
+    DiagnosisResponse, 
+    ErrorResponse, 
+    StructuredDiagnosisRequest,
+    StructuredDiagnosisResponse
+)
+from app.models.simplified_structured_request import SimplifiedStructuredDiagnosisRequest
 from app.services.diagnosis_service import diagnosis_service
 from app.middleware.auth import get_current_user
 from app.middleware.rate_limiter import check_rate_limit_dependency
@@ -11,6 +18,8 @@ from app.exceptions.custom_exceptions import (
     OpenAIServiceError,
     RateLimitError
 )
+from app.services.openai_service import openai_service
+from app.config.settings import settings
 
 logger = get_logger(__name__)
 
@@ -178,3 +187,141 @@ async def validate_symptoms(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while validating symptoms",
         )
+
+
+
+
+
+
+@router.post(
+    "/structure",
+    response_model=StructuredDiagnosisResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate simplified structured AI diagnosis",
+    description="Generate AI diagnosis using simplified structured patient data",
+    responses={
+        200: {
+            "description": "Successful diagnosis generation",
+            "model": StructuredDiagnosisResponse,
+        },
+        400: {
+            "description": "Invalid request data",
+            "model": ErrorResponse,
+        },
+        401: {
+            "description": "Unauthorized",
+            "model": ErrorResponse,
+        },
+        429: {
+            "description": "Rate limit exceeded",
+            "model": ErrorResponse,
+        },
+        500: {
+            "description": "Internal server error",
+            "model": ErrorResponse,
+        },
+        503: {
+            "description": "AI service temporarily unavailable",
+            "model": ErrorResponse,
+        },
+    },
+)
+async def generate_simplified_structured_diagnosis(
+    structured_request: SimplifiedStructuredDiagnosisRequest,
+    current_user: dict = Depends(get_current_user),
+    _: None = Depends(check_rate_limit_dependency),
+) -> StructuredDiagnosisResponse:
+    """
+    Generate AI diagnosis using simplified structured patient data.
+    
+    This endpoint accepts simplified structured patient data and generates
+    comprehensive diagnosis with safety considerations.
+    
+    Args:
+        structured_request: Simplified structured patient data
+        current_user: Current authenticated user
+        
+    Returns:
+        Comprehensive structured diagnosis with safety considerations
+        
+    Raises:
+        HTTPException: On validation errors, service failures, or processing errors
+    """
+    try:
+        logger.info(
+            f"Processing simplified structured diagnosis request",
+            extra={
+                "user_id": current_user.get("sub"),
+                "request_id": structured_request.patient_profile.request_id,
+                "patient_age": structured_request.patient_profile.age,
+                "primary_symptom": structured_request.primary_complaint.main_symptom,
+                "severity": structured_request.primary_complaint.severity,
+                "allergies_count": len(structured_request.medical_context.allergies),
+            }
+        )
+        
+        # Convert to dict for OpenAI processing
+        request_dict = structured_request.dict()
+        
+        # Generate diagnosis using OpenAI
+        diagnosis_data = await openai_service.generate_structured_diagnosis(request=request_dict)
+        
+        # Compose the structured response
+        from app.models.structured_response import (
+            StructuredDiagnosisResponse,
+            SafetyAssessment, 
+            AllergyConsideration,
+            RiskAssessment,
+            TreatmentRecommendation
+        )
+        from app.models.response import PossibleDiagnosis
+        
+        response = StructuredDiagnosisResponse(
+            request_id=structured_request.patient_profile.request_id,
+            patient_age=structured_request.patient_profile.age,
+            primary_symptom=structured_request.primary_complaint.main_symptom,
+            possible_diagnoses=[PossibleDiagnosis(**diag) for diag in diagnosis_data.get("possible_diagnoses", [])],
+            clinical_reasoning=diagnosis_data.get("clinical_reasoning", ""),
+            differential_considerations=diagnosis_data.get("differential_considerations", []),
+            safety_assessment=SafetyAssessment(
+                allergy_considerations=AllergyConsideration(**diagnosis_data.get("safety_assessment", {}).get("allergy_considerations", {})),
+                condition_interactions=diagnosis_data.get("safety_assessment", {}).get("condition_interactions", []),
+                safety_warnings=diagnosis_data.get("safety_assessment", {}).get("safety_warnings", [])
+            ),
+            risk_assessment=RiskAssessment(**diagnosis_data.get("risk_assessment", {})),
+            recommended_investigations=diagnosis_data.get("recommended_investigations", []),
+            treatment_recommendations=TreatmentRecommendation(**diagnosis_data.get("treatment_recommendations", {})),
+            patient_education=diagnosis_data.get("patient_education", []),
+            warning_signs=diagnosis_data.get("warning_signs", []),
+            confidence_score=diagnosis_data.get("confidence_score", 0.0),
+            processing_notes=diagnosis_data.get("processing_notes", []),
+            disclaimer=settings.medical_disclaimer,
+        )
+        
+        logger.info(
+            f"Simplified structured diagnosis generated successfully",
+            extra={
+                "user_id": current_user.get("sub"),
+                "request_id": structured_request.patient_profile.request_id,
+                "primary_diagnosis": response.possible_diagnoses[0].name if response.possible_diagnoses else "Unknown",
+                "confidence_score": response.confidence_score,
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(
+            f"Simplified structured diagnosis error: {e}",
+            extra={
+                "user_id": current_user.get("sub"),
+                "request_id": structured_request.patient_profile.request_id,
+                "error": str(e),
+            }
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Simplified structured diagnosis failed: {str(e)}",
+        )
+
+
