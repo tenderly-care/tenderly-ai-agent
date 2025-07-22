@@ -2,8 +2,6 @@
 
 from typing import Dict, Any, Optional
 from app.models import DiagnosisRequest, DiagnosisResponse, StructuredDiagnosisRequest, StructuredDiagnosisResponse
-from app.models.new_structured_request import NewStructuredDiagnosisRequest
-from app.models.new_structured_response import NewStructuredDiagnosisResponse
 from app.services.openai_service import openai_service
 from app.config.settings import settings
 from app.utils.logger import get_logger
@@ -121,44 +119,6 @@ class DiagnosisService:
             logger.error(f"Structured diagnosis processing failed: {e}")
             raise DiagnosisServiceError(f"Structured diagnosis processing failed: {e}")
 
-    @staticmethod
-    async def process_new_structured_diagnosis_request(request: NewStructuredDiagnosisRequest) -> NewStructuredDiagnosisResponse:
-        """
-        Process new structured diagnosis request and generate response.
-
-        Args:
-            request: NewStructuredDiagnosisRequest containing detailed input data
-
-        Returns:
-            NewStructuredDiagnosisResponse with diagnosis and recommendations
-
-        Raises:
-            DiagnosisServiceError: On processing failure
-        """
-        try:
-            logger.info(f"Processing new structured diagnosis request for request ID {request.patient_profile.request_id}")
-
-            # Generate a detailed diagnosis using OpenAI
-            diagnosis_data = await openai_service.generate_new_structured_diagnosis(request=request.dict())
-
-            # Compose the response
-            response = NewStructuredDiagnosisResponse(
-                diagnosis=diagnosis_data.get("diagnosis", "Unknown"),
-                confidence_score=diagnosis_data.get("confidence_score", 0.0),
-                suggested_investigations=diagnosis_data.get("suggested_investigations", []),
-                recommended_medications=diagnosis_data.get("recommended_medications", []),
-                lifestyle_advice=diagnosis_data.get("lifestyle_advice", []),
-                follow_up_recommendations=diagnosis_data.get("follow_up_recommendations", ""),
-                disclaimer=diagnosis_data.get("disclaimer", settings.medical_disclaimer),
-            )
-
-            logger.info(f"Successfully processed new structured diagnosis request with confidence score {response.confidence_score}")
-
-            return response
-
-        except Exception as e:
-            logger.error(f"New structured diagnosis processing failed: {e}")
-            raise DiagnosisServiceError(f"New structured diagnosis processing failed: {e}")
 
 
 # Global diagnosis service instance
