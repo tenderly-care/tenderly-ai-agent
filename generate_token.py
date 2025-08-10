@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 
 # Your secret key from the .env file
-secret_key = 'development_jwt_secret_key_change_in_production'
+secret_key = '146ab4fec2f968c24c218f404054f7e4a69d3526c8811a9c431ce1d555863f65'
 algorithm = 'HS256'
 
 # Create the payload

@@ -1,0 +1,92 @@
+services:
+  # Tenderly AI Agent Service
+  tenderly-ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      - OPENAI_MAX_TOKENS=${OPENAI_MAX_TOKENS:-1000}
+      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.1}
+      
+      # Application Configuration
+      - APP_NAME=${APP_NAME:-Tenderly AI Agent}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      
+      # Security Configuration
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+      
+      # API Key Authentication
+      - API_KEY=${API_KEY}
+      - ALLOWED_SERVICES=${ALLOWED_SERVICES:-tenderly-backend,tenderly-frontend,tenderly-admin}
+      - API_KEY_HEADER_NAME=${API_KEY_HEADER_NAME:-X-API-Key}
+      - REQUIRE_SERVICE_NAME=${REQUIRE_SERVICE_NAME:-true}
+      - ALLOWED_IPS=${ALLOWED_IPS:-127.0.0.1,::1}
+      
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_SSL=${REDIS_SSL:-false}
+      
+      # API Configuration
+      - API_PREFIX=${API_PREFIX:-/api/v1}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=${WORKERS:-4}
+      
+      # Rate Limiting
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-3600}
+      
+      # CORS Configuration
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,https://tenderly.care}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - tenderly-network
+
+  # Redis Service for Caching and Rate Limiting
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tenderly-network
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  tenderly-network:
+    driver: bridge
