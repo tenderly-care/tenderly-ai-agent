@@ -148,11 +148,14 @@ app.include_router(diagnosis_router, prefix=settings.api_prefix)
 @app.get("/")
 async def root():
     """Root endpoint."""
+    from datetime import datetime
     return {
         "message": "Tenderly AI Agent - Gynecology Diagnosis Service",
         "version": settings.app_version,
         "status": "healthy",
         "docs_url": "/docs" if settings.debug else None,
+        "deployment_test": "Railway Auto-Deploy Test",
+        "last_updated": datetime.utcnow().isoformat() + "Z",
     }
 
 
