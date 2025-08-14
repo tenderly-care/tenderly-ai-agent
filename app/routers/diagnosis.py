@@ -5,18 +5,25 @@ from app.models import (
     DiagnosisRequest, 
     DiagnosisResponse, 
     ErrorResponse, 
-    StructuredDiagnosisRequest,
-    StructuredDiagnosisResponse
+    StructuredDiagnosisResponse,
+    PossibleDiagnosis,
+    Investigation
 )
+from app.models.response import Medication
 from app.models.simplified_structured_request import SimplifiedStructuredDiagnosisRequest
+from app.models.structured_response import (
+    SafetyAssessment, 
+    AllergyConsideration,
+    RiskAssessment,
+    TreatmentRecommendation
+)
 from app.services.diagnosis_service import diagnosis_service
 from app.middleware.auth import get_current_user
 from app.middleware.rate_limiter import check_rate_limit_dependency
 from app.utils.logger import get_logger
 from app.exceptions.custom_exceptions import (
     DiagnosisServiceError,
-    OpenAIServiceError,
-    RateLimitError
+    OpenAIServiceError
 )
 from app.services.openai_service import openai_service
 from app.config.settings import settings
