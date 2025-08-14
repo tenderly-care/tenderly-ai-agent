@@ -272,15 +272,29 @@ htmlcov/
 *.pickle
 *.joblib
 *.model
-models/
+*.h5
+*.pb
+*.onnx
+*.tflite
+# But allow Python model classes in app/models/
 
 # Data files (if you have any)
 data/
 *.csv
-*.json
 *.xml
 *.xlsx
 *.xls
+
+# JSON files that may contain sensitive data
+*keys*.json
+*secret*.json
+*credential*.json
+*config*.json
+api-keys.json
+tenderly-keys.json
+# But allow specific config files needed for the app
+!package.json
+!docker-compose*.json
 
 
 # Kubernetes
@@ -299,6 +313,7 @@ terraform.rc
 local/
 dev/
 development/
+scripts/
 
 # Backup files
 *.bak
@@ -343,3 +358,35 @@ dump.rdb
 # OpenAI/API response cache
 .openai_cache/
 api_cache/
+
+# Docker volumes and data
+docker-volumes/
+postgres-data/
+redis-data/
+
+# Local development overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Environment-specific files
+.env.production
+.env.staging
+.env.development
+.env.test
+
+# Runtime files
+pidfile
+*.pid
+*.sock
+
+# Monitoring and metrics
+prometheus-data/
+grafana-data/
+
+# Documentation with sensitive info
+*AUTHENTICATION*
+*KEYS*
+*SECRETS*
+*CREDENTIALS*
+APIKEY*
+SECRET*
